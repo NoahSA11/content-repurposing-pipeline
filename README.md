@@ -4,7 +4,7 @@ Paste in one long-form piece of writing, get it repurposed into a LinkedIn post,
 an X thread, and an email blurb — generated in parallel by an n8n workflow
 calling OpenRouter's free-tier LLM API.
 
-**Live demo:** see the Vercel link at the top of this repo.
+**Live demo:** https://content-repurposing-pipeline-noah-adler-s-projects.vercel.app
 
 > This demo runs against a self-hosted n8n instance exposed through a
 > Cloudflare Tunnel. It's only reachable while that instance is running — if
