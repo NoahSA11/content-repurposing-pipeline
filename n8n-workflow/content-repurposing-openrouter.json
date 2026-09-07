@@ -1,0 +1,153 @@
+{
+  "name": "Content Repurposing Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "repurpose",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 300],
+      "webhookId": "repurpose"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_OPENROUTER_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"minimax/minimax-m3:free\", messages: [ { role: \"system\", content: \"You are a content repurposing engine, not a chatbot. You will receive source content. Never reply to it, greet the author, or ask questions. Rewrite the source content into a polished LinkedIn post: a strong hook first line, 3-6 short punchy paragraphs, a takeaway or call-to-action at the end. Output ONLY the LinkedIn post text — no preamble, no explanation.\" }, { role: \"user\", content: $json.body.content } ] } }}",
+        "options": {}
+      },
+      "name": "OR - LinkedIn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_OPENROUTER_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"minimax/minimax-m3:free\", messages: [ { role: \"system\", content: \"You are a content repurposing engine, not a chatbot. You will receive source content. Never reply to it, greet the author, or ask questions. Rewrite the source content as an X thread of 4-6 numbered tweets (each under 280 characters) building on each other. Output ONLY the numbered tweets — no preamble, no explanation.\" }, { role: \"user\", content: $json.body.content } ] } }}",
+        "options": {}
+      },
+      "name": "OR - X Thread",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer YOUR_OPENROUTER_API_KEY" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { model: \"minimax/minimax-m3:free\", messages: [ { role: \"system\", content: \"You are a content repurposing engine, not a chatbot. You will receive source content. Never reply to it, greet the author, or ask questions. Rewrite the source content as a short email newsletter blurb: a subject line, then 2-3 short paragraphs. Output ONLY the subject line and body — no preamble, no explanation.\" }, { role: \"user\", content: $json.body.content } ] } }}",
+        "options": {}
+      },
+      "name": "OR - Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 460]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "numberInputs": 3,
+        "options": {}
+      },
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [380, 300]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "name": "linkedin",
+              "type": "string",
+              "value": "={{ $node[\"OR - LinkedIn\"].json.choices[0].message.content }}"
+            },
+            {
+              "name": "x_thread",
+              "type": "string",
+              "value": "={{ $node[\"OR - X Thread\"].json.choices[0].message.content }}"
+            },
+            {
+              "name": "email",
+              "type": "string",
+              "value": "={{ $node[\"OR - Email\"].json.choices[0].message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Shape Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [860, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "OR - LinkedIn", "type": "main", "index": 0 },
+          { "node": "OR - X Thread", "type": "main", "index": 0 },
+          { "node": "OR - Email", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "OR - LinkedIn": { "main": [[{ "node": "Merge", "type": "main", "index": 0 }]] },
+    "OR - X Thread": { "main": [[{ "node": "Merge", "type": "main", "index": 1 }]] },
+    "OR - Email": { "main": [[{ "node": "Merge", "type": "main", "index": 2 }]] },
+    "Merge": { "main": [[{ "node": "Shape Output", "type": "main", "index": 0 }]] },
+    "Shape Output": { "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]] }
+  }
+}
