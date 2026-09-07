@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Content Repurposing Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0c10;
+    --panel: #14161c;
+    --panel-border: #262a34;
+    --text: #eef0f4;
+    --muted: #9aa1ae;
+    --accent: #6366f1;
+    --accent-hover: #7476f5;
+    --linkedin: #0a66c2;
+    --x: #1d9bf0;
+    --email: #34d399;
+    --error: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, #1a1c24 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 48px 20px 80px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 40px; }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 8px;
+    background: linear-gradient(90deg, #eef0f4, #a5a8ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header p { color: var(--muted); margin: 0; font-size: 0.95rem; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 24px;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    resize: vertical;
+    background: #0f1116;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 14px 16px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .hint { color: var(--muted); font-size: 0.82rem; }
+  button#generate {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 22px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  button#generate:hover:not(:disabled) { background: var(--accent-hover); }
+  button#generate:active:not(:disabled) { transform: scale(0.98); }
+  button#generate:disabled { opacity: 0.6; cursor: not-allowed; }
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+  .spinner.active { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #error {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    color: var(--error);
+    font-size: 0.88rem;
+  }
+
+  #results {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+    margin-top: 28px;
+  }
+  .output-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: rise 0.4s ease forwards;
+  }
+  @keyframes rise { to { opacity: 1; transform: translateY(0); } }
+  .output-card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .dot.linkedin { background: var(--linkedin); }
+  .dot.x { background: var(--x); }
+  .dot.email { background: var(--email); }
+  .output-body {
+    white-space: pre-wrap;
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--text);
+    flex: 1;
+  }
+  .copy-btn {
+    margin-top: 16px;
+    align-self: flex-start;
+    background: transparent;
+    border: 1px solid var(--panel-border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--text); }
+
+  footer {
+    text-align: center;
+    margin-top: 56px;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Content Repurposing Pipeline</h1>
+      <p>Paste in a long-form piece of writing. An n8n workflow fans it out to three LLM calls and repurposes it for LinkedIn, X, and email — in parallel.</p>
+    </header>
+
+    <div class="card">
+      <textarea id="content" placeholder="Paste an article, blog post, or long-form note here..."></textarea>
+      <div class="controls">
+        <span class="hint">Runs through a self-hosted n8n workflow + OpenRouter LLM calls.</span>
+        <button id="generate">
+          <span class="spinner" id="spinner"></span>
+          <span id="generate-label">Generate</span>
+        </button>
+      </div>
+      <div id="error"></div>
+    </div>
+
+    <div id="results"></div>
+
+    <footer>
+      Built by Noah Adler &middot; <a href="https://github.com/NoahSA11/content-repurposing-pipeline" target="_blank" rel="noopener">source on GitHub</a>
+    </footer>
+  </div>
+
+<script>
+  // Replace with your n8n production webhook URL.
+  const WEBHOOK_URL = "https://sweet-viewing-steam-metabolism.trycloudflare.com/webhook/repurpose";
+
+  const contentEl = document.getElementById("content");
+  const generateBtn = document.getElementById("generate");
+  const spinner = document.getElementById("spinner");
+  const label = document.getElementById("generate-label");
+  const errorEl = document.getElementById("error");
+  const resultsEl = document.getElementById("results");
+
+  const PLATFORMS = [
+    { key: "linkedin", title: "LinkedIn", dot: "linkedin" },
+    { key: "x_thread", title: "X Thread", dot: "x" },
+    { key: "email", title: "Email", dot: "email" },
+  ];
+
+  function setLoading(isLoading) {
+    generateBtn.disabled = isLoading;
+    spinner.classList.toggle("active", isLoading);
+    label.textContent = isLoading ? "Generating..." : "Generate";
+  }
+
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.style.display = "block";
+  }
+
+  function clearError() {
+    errorEl.style.display = "none";
+    errorEl.textContent = "";
+  }
+
+  function renderResults(data) {
+    resultsEl.innerHTML = "";
+    PLATFORMS.forEach((platform, i) => {
+      const text = data[platform.key];
+      if (!text) return;
+      const card = document.createElement("div");
+      card.className = "output-card";
+      card.style.animationDelay = `${i * 80}ms`;
+      card.innerHTML = `
+        <h2><span class="dot ${platform.dot}"></span>${platform.title}</h2>
+        <div class="output-body"></div>
+        <button class="copy-btn">Copy</button>
+      `;
+      card.querySelector(".output-body").textContent = text;
+      card.querySelector(".copy-btn").addEventListener("click", () => {
+        navigator.clipboard.writeText(text);
+        const btn = card.querySelector(".copy-btn");
+        const original = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = original), 1200);
+      });
+      resultsEl.appendChild(card);
+    });
+  }
+
+  async function generate() {
+    const content = contentEl.value.trim();
+    clearError();
+    resultsEl.innerHTML = "";
+
+    if (!content) {
+      showError("Paste in some content first.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Request failed (${res.status})`);
+      }
+
+      const data = await res.json();
+      renderResults(data);
+    } catch (err) {
+      showError(
+        `Couldn't reach the pipeline: ${err.message}. This demo depends on a live n8n instance + tunnel — if it's not currently running, see the GitHub README for a recorded demo.`
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  generateBtn.addEventListener("click", generate);
+  contentEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) generate();
+  });
+</script>
+</body>
+</html>
